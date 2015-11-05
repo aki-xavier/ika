@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <meta HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+  <meta NAME="viewport" CONTENT="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <head>
+    <title>index</title>
+    <style>
+    body{
+      margin: 0;
+      padding: 0;
+    }
+    </style>
+    <script src="build/ika.js" type="text/javascript" charset="utf-8"></script>
+  </head>
+  <body>
+  <script>
+  var scene = ika.easySetup();
+  // Insert your code here
+	var b = new ika.Button("click me").init();
+	scene.add(b);
+  scene.render();
+  </script>
+  </body>
+</html>
