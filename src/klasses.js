@@ -1,7 +1,7 @@
 module.exports.Scene = require("./scene");
 module.exports.Model = require("./model");
 module.exports.utils = require("./utils");
-module.exports.gaussian = require("./gaussian");
+module.exports.effects = require("./effects");
 module.exports.events = require("./event");
 module.exports.Monkey = require("./monkey");
 

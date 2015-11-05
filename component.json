@@ -16,7 +16,7 @@
     "src/klasses.js",
     "src/utils.js",
     "src/scene.js",
-		"src/gaussian.js",
+		"src/effects.js",
     "src/query.js",
     "src/monkey.js",
     "src/event.js",

@@ -2,7 +2,7 @@ var Emitter = require("emitter");
 var ArrayMgr = require("arraymgr");
 var utils = require("./utils");
 var PICTURES = require("./public_pictures");
-var gaussian = require("./gaussian");
+var effects = require("./effects");
 
 var Ease = require("ika-animations").Ease;
 
@@ -367,9 +367,12 @@ Element.prototype._renderSingleBackgroundImagePiece = function(ctx, img, x, y, w
 };
 
 Element.prototype.renderBackgroundBlur = function(ctx, startFromZero) {
-	var imageData = ctx.getImageData(this.x, this.y, this.width, this.height);
-	gaussian(imageData, this.width, this.height, 4);
-	ctx.putImageData(imageData, this.x, this.y);
+	var b = this.getBound();
+	var x = startFromZero ? 0 : b.x;
+	var y = startFromZero ? 0 : b.y;
+	var imageData = ctx.getImageData(x, y, b.width, b.height);
+	imageData.data = effects.mosaic(imageData.data, b.width, b.height, 10);
+	ctx.putImageData(imageData, x, y);
 };
 
 // Renders background
@@ -380,9 +383,10 @@ Element.prototype.renderBackground = function(ctx, startFromZero) {
 	var y = startFromZero ? 0 : b.y;
 	if (this.css("background-image")) {
 		this.renderBackgroundImage(ctx, startFromZero);
-	} else if (this.css("background-blur")) {
-		this.renderBackgroundBlur(ctx, startFromZero);
 	} else {
+		if (this.css("background-mosaic")) {
+			this.renderBackgroundBlur(ctx, startFromZero);
+		}
 		this.applyBackgroundStyles(ctx);
 		if (this.css("border-radius")) {
 			this._drawRadiusPath(ctx, x, y, b);

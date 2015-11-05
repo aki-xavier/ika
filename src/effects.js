@@ -88,10 +88,6 @@ function BlurStack()
 function blurImageData(imageData, width, height, radius) {
 	if ( isNaN(radius) || radius < 1 ) return;
 	radius |= 0;
-
-	var canvas  = document.getElementById( id );
-	var context = canvas.getContext("2d");
-
 	var pixels = imageData.data;
 
 	var x, y, i, p, yp, yi, yw, r_sum, g_sum, b_sum, a_sum,
@@ -322,6 +318,246 @@ function blurImageData(imageData, width, height, radius) {
 			yi += width;
 		}
 	}
+	return imageData;
 }
 
-module.exports = blurImageData;
+//effects code came from pixastic:
+//https://github.com/jseidelin/pixastic
+
+function clamp(val, min, max) {
+    return Math.min(max, Math.max(min, val));
+}
+
+function gaussian(data, width, height, kernelSize) {
+  var r, g, b, a, idx,
+    x, y, i, j,
+    inx, iny, w,
+    tmpData = [],
+    maxKernelSize = 13,
+    kernelSize = clamp(kernelSize, 3, maxKernelSize),
+    k1 = - kernelSize / 2 + (kernelSize % 2 ? 0.5 : 0),
+    k2 = kernelSize + k1,
+    weights,
+    kernels = [[1]];
+
+  for (i = 1; i < maxKernelSize; ++i) {
+    kernels[0][i] = 0;
+  }
+
+  for (i = 1; i < maxKernelSize; ++i) {
+    kernels[i] = [1];
+    for (j = 1; j < maxKernelSize; ++j) {
+      kernels[i][j] = kernels[i-1][j] + kernels[i-1][j-1];
+    }
+  }
+
+  weights = kernels[kernelSize - 1]
+  for (i = 0, w = 0 ; i < kernelSize; ++i) {
+    w += weights[i];
+  }
+  for (i = 0; i < kernelSize; ++i) {
+    weights[i] /= w;
+  }
+
+  for (y = 0; y < height; ++y) {
+    for (x = 0; x < width; ++x) {
+      r = g = b = a = 0;
+
+      for (i = k1; i < k2; ++i) {
+        inx = x + i;
+        iny = y;
+        w = weights[i - k1];
+
+        if (inx < 0) {
+            inx = 0;
+        }
+        if (inx >= width) {
+            inx = width - 1;
+        }
+
+        idx = (iny * width + inx) * 4;
+
+        r += data[idx] * w;
+        g += data[idx + 1] * w;
+        b += data[idx + 2] * w;
+        a += data[idx + 3] * w;
+      }
+
+      idx = (y * width + x) * 4;
+
+      tmpData[idx] = r;
+      tmpData[idx + 1] = g;
+      tmpData[idx + 2] = b;
+      tmpData[idx + 3] = a;
+    }
+  }
+
+  for (y = 0; y < height; ++y) {
+    for (x = 0; x < width; ++x) {
+      r = g = b = a = 0;
+      for (i = k1; i < k2; ++i) {
+        inx = x;
+        iny = y + i;
+        w = weights[i - k1];
+
+        if (iny < 0) {
+          iny = 0;
+        }
+        if (iny >= height) {
+          iny = height - 1;
+        }
+        idx = (iny * width + inx) * 4;
+        r += tmpData[idx] * w;
+        g += tmpData[idx + 1] * w;
+        b += tmpData[idx + 2] * w;
+        a += tmpData[idx + 3] * w;
+      }
+      idx = (y * width + x) * 4;
+
+      data[idx] = r;
+      data[idx + 1] = g;
+      data[idx + 2] = b;
+      data[idx + 3] = a;
+    }
+  }
+  return data;
+}
+
+//ImageData.data doesn't have slice method
+function cloneArray(arr) {
+  var _arr = [];
+  for (var i = 0, len = arr.length; i < len; i++) {
+    _arr[i] = arr[i];
+  }
+  return _arr;
+}
+
+//all 'this' will be forward to Photo Booth
+module.exports = {
+  flipv : function(data, height, width) {
+    var inPix, outPix, x, y;
+    for (y = 0; y < height; ++y) {
+      for (x = 0; x < width; ++x) {
+        inPix = (y * width + x) * 4;
+        outPix = (y * width + (width - x - 1)) * 4;
+        data[outPix] = data[inPix];
+        data[outPix + 1] = data[inPix + 1];
+        data[outPix + 2] = data[inPix + 2];
+        data[outPix + 3] = data[inPix + 3];
+      }
+    }
+  },
+  fliph : function(data, height, width) {
+    var inPix, outPix, x, y;
+    for (y = 0; y < height; ++y) {
+      for (x = 0; x< width; ++x) {
+        inPix = (y * width + x) * 4;
+        outPix = ((height - y - 1) * width + x) * 4;
+        data[outPix] = data[inPix];
+        data[outPix + 1] = data[inPix + 1];
+        data[outPix + 2] = data[inPix + 2];
+        data[outPix + 3] = data[inPix + 3];
+      }
+    }
+  },
+  'invert': function(data) {
+    for (var i = 0; i < data.length; i += 4) {
+      data[i] = 255 - data[i];
+      data[i + 1] = 255 - data[i + 1];
+      data[i + 2] = 255 - data[i + 2];
+      data[i + 3] = data[i + 3];
+    }
+  },
+  'sepia': function(data) {
+    var r, g, b;
+    for (var i = 0; i < data.length; i += 4) {
+      r = data[i];
+      g = data[i + 1];
+      b = data[i + 2];
+      data[i] = r * 0.393 + g * 0.769 + b * 0.189;
+      data[i + 1] = r * 0.349 + g * 0.686 + b * 0.168;
+      data[ i + 2] = r * 0.272 + g * 0.534 + b * 0.131;
+    }
+  },
+  'solarize': function(data) {
+    var r, g, b;
+    for (var i = 0; i < data.length; i += 4) {
+      r = data[i];
+      g = data[i + 1];
+      b = data[i + 2];
+
+      data[i] = r > 127 ? 255 - r : r;
+      data[i + 1] = g > 127 ? 255 - g : g;
+      data[i + 2] = b > 127 ? 255 - b : b;
+    }
+  },
+  'brightness': function(data) {
+    var brightness = 1;
+    var contrast = 0;
+    var r, g, b;
+
+    contrast = clamp(contrast, -1, 1) / 2;
+    brightness = 1 + clamp(brightness, -1, 1);
+
+    var brightMul = brightness < 0 ? - brightness : brightness;
+    var brightAdd = brightness < 0 ? 0 : brightness;
+
+    contrast = 0.5 * Math.tan((contrast + 1) * Math.PI / 4);
+    contrastAdd = - (contrast - 0.5) * 255;
+
+    for (var i = 0; i < data.length; i += 4) {
+      r = data[i];
+      g = data[i + 1]
+      b = data[i + 2];
+      r = (r + r * brightMul + brightAdd) * contrast + contrastAdd;
+      g = (g + g * brightMul + brightAdd) * contrast + contrastAdd;
+      b = (b + b * brightMul + brightAdd) * contrast + contrastAdd;
+      data[i] = r;
+      data[i + 1] = g;
+      data[i + 2] = b;
+    }
+  },
+  'desaturate': function(data) {
+    var level;
+    for (var i = 0; i < data.length; i += 4) {
+      level = data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11;
+      data[i] = level;
+      data[i + 1] = level;
+      data[i + 2] = level;
+    }
+  },
+  'blur': function(data, width, height, kernelSize) {
+		kernelSize = kernelSize || 10;
+    gaussian(data, width, height, kernelSize);
+  },
+  'mosaic': function(data, width, height) {
+    var blockLength = 10;
+    var pixelCounts = blockLength * blockLength;
+    var xBlockCount = width / blockLength;
+    var yBlockCount = height / blockLength;
+    for (var x = 0; x < xBlockCount; x += 1) {
+      for (var y = 0; y < yBlockCount; y += 1) {
+        var sum = [0,0,0];
+        var lenX = (x + 1) * blockLength;
+        var lenY = (y + 1) * blockLength;
+        for (var _x = x * blockLength; _x < lenX; _x += 1) {
+          for (var _y = y * blockLength; _y < lenY; _y += 1) {
+            sum[0] += data[(_y * width + _x) * 4];
+            sum[1] += data[(_y * width + _x) * 4 + 1];
+            sum[2] += data[(_y * width + _x) * 4 + 2];
+          }
+        }
+        sum[0] /= pixelCounts;
+        sum[1] /= pixelCounts;
+        sum[2] /= pixelCounts;
+        for (var _x = x * blockLength; _x < lenX; _x += 1) {
+          for (var _y = y * blockLength; _y < lenY; _y += 1) {
+            data[(_y * width + _x) * 4] = sum[0];
+            data[(_y * width + _x) * 4 + 1] = sum[1];
+            data[(_y * width + _x) * 4 + 2] = sum[2];
+          }
+        }
+      }
+    }
+  }
+};
