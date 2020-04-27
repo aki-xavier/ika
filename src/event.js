@@ -1,179 +1,124 @@
-var utils = require("./utils");
+import { EventEmitter2 } from "eventemitter2";
 
-function Event(eventName, x, y) {
-	this.eventName = eventName;
-	this.x = x || 0;
-	this.y = y || 0;
+/**
+ * @typedef Point
+ * @property {number} x
+ * @property {number} y
+ */
+
+export class Event {
+	/**
+	 * @param {string} name
+	 * @param {number} [x]
+	 * @param {number} [y]
+	 */
+	constructor(name, x, y) {
+		this.name = name;
+		this.x = x || 0;
+		this.y = y || 0;
+		this.wheelDeltaX = 0;
+		this.wheelDeltaY = 0;
+		this.keyCode = 0;
+		this.keyName = 0;
+		this.touches = [];
+	}
+
+	clone() {
+		let ne = new Event(this.name, this.x, this.y);
+		ne.wheelDeltaX = this.wheelDeltaX;
+		ne.wheelDeltaY = this.wheelDeltaY;
+		ne.keyCode = this.keyCode;
+		ne.keyName = this.keyName;
+		for (let t of this.touches) {
+			ne.touches.push(t);
+		}
+		return ne;
+	}
 }
 
-Event.prototype.clone = function() {
-	var ne = new Event(this.eventName, this.x, this.y);
-	var keys = ["wheelDeltaX", "wheelDeltaY", "keyCode", "keyName", "touches"];
-	for (var i = 0; i < keys.length; i++) {
-		var key = keys[i];
-		if (this[key]) {
-			ne[key] = this[key];
+export class EventDelegate extends EventEmitter2 {
+	constructor(props) {
+		super(props);
+		this.watchMouseDrag = false;
+		this.w = props.w || 800;
+		this.h = props.h || 600;
+		/** @type {HTMLCanvasElement} */
+		this.el = props.el;
+		this.el.onmousedown = this.onMouseDown.bind(this);
+		this.el.onmouseup = this.onMouseUp.bind(this);
+		this.el.onmousemove = this.onMouseMove.bind(this);
+		this.el.onmouseout = this.onMouseOut.bind(this);
+		this.el.ontouchstart = this.onTouchStart.bind(this);
+		this.el.ontouchmove = this.onTouchMove.bind(this);
+		this.el.ontouchend = this.onTouchEnd.bind(this);
+		this.el.onwheel = this.onMouseWheel.bind(this);
+
+		this.ctx = this.el.getContext("2d");
+
+		this.resize(this.w, this.h);
+
+		this.offsetX = 0;
+		this.offsetY = 0;
+		this.calcOffset();
+	}
+
+	resize(w, h) {
+		this.w = w;
+		this.h = h;
+
+		this.el.width = w;
+		this.el.height = h;
+		this.el.style.width = w + "px";
+		this.el.style.height = h + "px";
+
+		if (window.devicePixelRatio) {
+			this.el.width *= window.devicePixelRatio;
+			this.el.height *= window.devicePixelRatio;
+			this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 		}
 	}
-	return ne;
-};
 
-function EventDelegate(scene) {
-	this.scene = scene;
-	this.watchMouseDrag = false;
-};
-
-EventDelegate.prototype.init = function() {
-	var el = this.scene.el;
-	if (!el.addEventListener) {
-		el = document;
+	calcOffset() {
+		let bbox = this.el.getBoundingClientRect();
+		this.offsetX = bbox.left * (this.el.width / bbox.width);
+		this.offsetY = bbox.top * (this.el.height / bbox.height);
 	}
-	el.addEventListener("mousedown", utils.delegate(this, "onmousedown"));
-	el.addEventListener("mouseup", utils.delegate(this, "onmouseup"));
-	el.addEventListener("mousemove", utils.delegate(this, "onmousemove"));
-	el.addEventListener("touchstart", utils.delegate(this, "ontouchstart"));
-	el.addEventListener("touchmove", utils.delegate(this, "ontouchmove"));
-	el.addEventListener("touchend", utils.delegate(this, "ontouchend"));
-	el.addEventListener("mouseout", utils.delegate(this, "onmouseout"));
-	el.addEventListener("mousewheel", utils.delegate(this, "onmousewheel"));
-	//mousewheel for firefox
-	el.addEventListener("DOMMouseScroll", utils.delegate(this, "onmousewheel"));
-	return this;
-};
 
-EventDelegate.prototype.translatePoint = function(x, y) {
-	if (this.offsetX == null) {
-		var el = this.scene.el;
-		if (el.getBoundingClientRect) {
-			var bbox = el.getBoundingClientRect();
-			this.offsetX = bbox.left * (el.width / bbox.width);
-			this.offsetY = bbox.top * (el.height / bbox.height);
-		} else {
-			this.offsetX = this.offsetY = 0;
-		}
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @returns {Point}
+	 */
+	translatePoint(x, y) {
+		return {
+			x: x - this.offsetX,
+			y: y - this.offsetY,
+		};
 	}
-	x -= this.offsetX;
-	y -= this.offsetY;
-	return {x: x, y: y};
-};
 
-EventDelegate.prototype.onmousedown = function(e) {
-	this.watchMouseDrag = true;
-	var p = this.translatePoint(e.clientX, e.clientY);
-	var event = new Event("mousedown", p.x, p.y);
-	this.scene._trigger_mousedown(event);
-	if (e.preventDefault) {
+	/** @param {MouseEvent} e */
+	onMouseDown(e) {
+		this.watchMouseDrag = true;
+		let p = this.translatePoint(e.clientX, e.clientY);
+		this.triggerMouseDown(p);
 		e.preventDefault();
 	}
-};
 
-EventDelegate.prototype.onmouseup = function(e) {
-	this.watchMouseDrag = false;
-	var p = this.translatePoint(e.clientX, e.clientY);
-	var event = new Event("mouseup", p.x, p.y);
-	this.scene._trigger_mouseup(event);
-	if (e.preventDefault) {
-		e.preventDefault();
-	}
-};
+	onMouseUp(e) {}
 
-// Redirect mouseout event to mouseup event
-EventDelegate.prototype.onmouseout = function(e) {
-	if (this.watchMouseDrag) {
-		this.onmouseup(e);
-	}
-};
+	onMouseMove(e) {}
 
-EventDelegate.prototype.onmousemove = function(e) {
-	if (this.watchMouseDrag) {
-		var p = this.translatePoint(e.clientX, e.clientY);
-		var event = new Event("mousemove", p.x, p.y);
-		this.scene._trigger_mousemove(event);
-	}
-	if (e.preventDefault) {
-		e.preventDefault();
-	}
-};
+	onMouseOut(e) {}
 
-EventDelegate.prototype.ontouchstart = function(e) {
-	if (e.touches.length === 1) {
-		this.onmousedown({
-			clientX: e.touches[0].pageX,
-			clientY: e.touches[0].pageY
-		});
-	}
-	var event = new Event("touchstart");
-	var touches = [];
-	for (var i = 0; i < e.touches.length; i++) {
-		var touch = this.translatePoint(e.touches[i].pageX, e.touches[i].pageY);
-		touches.push(touch);
-	}
-	event.touches = touches;
-	this.scene.emit("touchstart", event);
-	if (e.preventDefault) {
-		e.preventDefault();
-	}
-};
+	onTouchStart(e) {}
 
-EventDelegate.prototype.ontouchmove = function(e) {
-	if (e.touches.length === 1) {
-		this.onmousemove({
-			clientX: e.touches[0].pageX,
-			clientY: e.touches[0].pageY
-		});
-	}
-	var event = new Event("touchmove");
-	var touches = [];
-	for (var i = 0; i < e.touches.length; i++) {
-		var touch = this.translatePoint(e.touches[i].pageX, e.touches[i].pageY);
-		touches.push(touch);
-	}
-	event.touches = touches;
-	this.scene.emit("touchmove", event);
-	if (e.preventDefault) {
-		e.preventDefault();
-	}
-};
+	onTouchMove(e) {}
 
-EventDelegate.prototype.ontouchend = function(e) {
-	if (e.changedTouches.length === 1) {
-		this.onmouseup({
-			clientX: e.changedTouches[0].pageX,
-			clientY: e.changedTouches[0].pageY
-		});
-	}
-	var event = new Event("touchend");
-	var touches = [];
-	for (var i = 0; i < e.touches.length; i++) {
-		var touch = this.translatePoint(e.touches[i].pageX, e.touches[i].pageY);
-		touches.push(touch);
-	}
-	event.touches = touches;
-	this.scene.emit("touchend", event);
-	if (e.preventDefault) {
-		e.preventDefault();
-	}
-};
+	onTouchEnd(e) {}
 
-EventDelegate.prototype.onmousewheel = function(e) {
-	var p = this.translatePoint(e.clientX, e.clientY);
-	var event = new Event("mousewheel", p.x, p.y);
-	if (e.wheelDeltaY) {
-		event.wheelDeltaY = e.wheelDeltaY || 0;
-		event.wheelDeltaX = e.wheelDeltaX || 0;
-	} else if (e.wheelDelta) {
-		event.wheelDeltaY = e.wheelDelta;
-		event.wheelDeltaX = 0;
-	} else {
-		event.wheelDeltaY = - 120 * e.detail / 3;
-		event.wheelDeltaX = 0;
-	}
-	this.scene._trigger_mousewheel(event);
-	if (e.preventDefault) {
-		e.preventDefault();
-	}
-	NotificationReceiver.emit("render");
-};
+	onMouseWheel(e) {}
 
-module.exports.EventDelegate = EventDelegate;
-module.exports.Event = Event;
+	//============================
+
+	triggerMouseDown(point) {}
+}

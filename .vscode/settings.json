@@ -1,0 +1,9 @@
+{
+	"editor.formatOnSave": true,
+	"javascript.implicitProjectConfig.checkJs": true,
+	"debug.console.fontSize": 13,
+	"markdown.preview.fontSize": 13,
+	"terminal.integrated.fontSize": 13,
+	"prettier.useTabs": true,
+	"prettier.tabWidth": 4
+}

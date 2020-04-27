@@ -1,0 +1,25 @@
+{
+  "name": "ika",
+  "version": "1.0.0",
+  "description": "pure canvas implentation",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aki-xavier/ika.git"
+  },
+  "author": "Aki Petit",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aki-xavier/ika/issues"
+  },
+  "homepage": "https://github.com/aki-xavier/ika#readme",
+  "dependencies": {
+    "eventemitter2": "^6.3.1"
+  }
+}
