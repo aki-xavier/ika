@@ -3,33 +3,6 @@ export { NotificationCenter } from "./notification";
 
 import { Element } from "../element";
 
-let lastTime = 0;
-var vendors = ["ms", "moz", "webkit", "o"];
-for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-	window.requestAnimationFrame = window[vendors[x] + "RequestAnimationFrame"];
-	window.cancelAnimationFrame =
-		window[vendors[x] + "CancelAnimationFrame"] ||
-		window[vendors[x] + "CancelRequestAnimationFrame"];
-}
-
-if (window.requestAnimationFrame === undefined) {
-	window.requestAnimationFrame = function (callback) {
-		var currTime = Date.now(),
-			timeToCall = Math.max(0, 16 - (currTime - lastTime));
-		var id = window.setTimeout(function () {
-			callback(currTime + timeToCall);
-		}, timeToCall);
-		lastTime = currTime + timeToCall;
-		return id;
-	};
-}
-
-if (window.cancelAnimationFrame === undefined) {
-	window.cancelAnimationFrame = function (id) {
-		clearTimeout(id);
-	};
-}
-
 export let colorOne = "rgb(50,50,50)";
 export let colorTwo = "white";
 export let colorThree = "#eaeaea";
@@ -50,24 +23,24 @@ export function isPointInRect(x, y, x1, y1, width, height) {
 /**
  * @param {number} from
  * @param {number} to
- * @param {boolean} no_floor
+ * @param {boolean} noFloor
  */
-export function random(from, to, no_floor) {
+export function random(from, to, noFloor) {
 	if (Array.isArray(from)) {
 		return from[Math.floor(Math.random() * from.length)];
 	}
-	var _from = from == null ? 0 : from,
-		_to = to == null ? 0 : to;
+	var f = from == null ? 0 : from,
+		t = to == null ? 0 : to;
 	if (to < from) {
-		_from = to;
-		_to = from;
+		f = to;
+		t = from;
 	} else if (to == from) {
-		_to = _from + 10;
+		t = f + 10;
 	}
-	if (no_floor) {
-		return Math.random() * (_to - _from) + _from;
+	if (noFloor) {
+		return Math.random() * (t - f) + f;
 	} else {
-		return Math.floor(Math.random() * (_to - _from) + _from);
+		return Math.floor(Math.random() * (t - f) + f);
 	}
 }
 
@@ -89,8 +62,8 @@ export function searchItemInGroup(group, item) {
 		pos.y += group.offsetY;
 	}
 
-	for (let _item of group.children.items) {
-		if (_item === item) {
+	for (let i of group.children.items) {
+		if (i === item) {
 			found = true;
 			break;
 		}
@@ -103,14 +76,14 @@ export function searchItemInGroup(group, item) {
 		return pos;
 	}
 
-	for (let _item of group.children.items) {
-		if (_item.children == null) {
+	for (let i of group.children.items) {
+		if (i.children == null) {
 			continue;
 		}
-		let b = _item.getBound();
+		let b = i.getBound();
 		pos.x += b.x;
 		pos.y += b.y;
-		let result = searchItemInGroup(_item, item);
+		let result = searchItemInGroup(i, item);
 		if (result != null) {
 			found = true;
 			pos.x += result.x;

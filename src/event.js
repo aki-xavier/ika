@@ -21,8 +21,6 @@ export class Event {
 		this.wheelDeltaY = 0;
 		this.keyCode = 0;
 		this.keyName = 0;
-		/** @type {Point[]} */
-		this.touches = [];
 	}
 
 	clone() {
@@ -31,9 +29,6 @@ export class Event {
 		ne.wheelDeltaY = this.wheelDeltaY;
 		ne.keyCode = this.keyCode;
 		ne.keyName = this.keyName;
-		for (let t of this.touches) {
-			ne.touches.push(t);
-		}
 		return ne;
 	}
 }
@@ -42,41 +37,48 @@ export class EventDelegate extends EventEmitter2 {
 	constructor(props) {
 		super(props);
 		this.watchMouseDrag = false;
-		this.w = props.w || 800;
-		this.h = props.h || 600;
 		/** @type {HTMLCanvasElement} */
 		this.el = props.el;
-		this.el.onmousedown = this.onMouseDown.bind(this);
-		this.el.onmouseup = this.onMouseUp.bind(this);
-		this.el.onmousemove = this.onMouseMove.bind(this);
-		this.el.onmouseout = this.onMouseOut.bind(this);
-		this.el.ontouchstart = this.onTouchStart.bind(this);
-		this.el.ontouchmove = this.onTouchMove.bind(this);
-		this.el.ontouchend = this.onTouchEnd.bind(this);
-		this.el.onwheel = this.onMouseWheel.bind(this);
+		this.el.addEventListener("mousedown", this.onMouseDown.bind(this), {
+			passive: true,
+		});
+		this.el.addEventListener("mouseup", this.onMouseUp.bind(this), {
+			passive: true,
+		});
+		this.el.addEventListener("mousemove", this.onMouseMove.bind(this), {
+			passive: true,
+		});
+		this.el.addEventListener("mouseout", this.onMouseOut.bind(this), {
+			passive: true,
+		});
+		this.el.addEventListener("wheel", this.onMouseWheel.bind(this), {
+			passive: true,
+		});
 
 		this.ctx = this.el.getContext("2d");
 		this.ctx.imageSmoothingEnabled = false;
 
-		this.resize(this.w, this.h);
+		this.resize();
 
 		this.offsetX = 0;
 		this.offsetY = 0;
 		this.calcOffset();
 	}
 
-	resize(w, h) {
-		this.w = w;
-		this.h = h;
+	resize() {
+		let rect = this.el.getBoundingClientRect();
+		this.w = rect.width;
+		this.h = rect.height;
 
-		this.el.width = w;
-		this.el.height = h;
-		this.el.style.width = w + "px";
-		this.el.style.height = h + "px";
-
-		if (window.devicePixelRatio) {
-			this.el.width *= window.devicePixelRatio;
-			this.el.height *= window.devicePixelRatio;
+		if (window.devicePixelRatio !== 1) {
+			this.el.setAttribute(
+				"width",
+				(this.w * window.devicePixelRatio).toString()
+			);
+			this.el.setAttribute(
+				"height",
+				(this.h * window.devicePixelRatio).toString()
+			);
 			this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 		}
 	}
@@ -105,7 +107,6 @@ export class EventDelegate extends EventEmitter2 {
 		let p = this.translatePoint(e.clientX, e.clientY);
 		let event = new Event("mousedown", p.x, p.y);
 		this.triggerMouseDown(event);
-		e.preventDefault();
 	}
 
 	/** @param {MouseEvent} e */
@@ -114,7 +115,6 @@ export class EventDelegate extends EventEmitter2 {
 		let p = this.translatePoint(e.clientX, e.clientY);
 		let event = new Event("mouseup", p.x, p.y);
 		this.triggerMouseUp(event);
-		e.preventDefault();
 	}
 
 	/** @param {MouseEvent} e */
@@ -131,79 +131,6 @@ export class EventDelegate extends EventEmitter2 {
 			let event = new Event("mousemove", p.x, p.y);
 			this.triggerMouseMove(event);
 		}
-		e.preventDefault();
-	}
-
-	/** @param {TouchEvent} e */
-	onTouchStart(e) {
-		if (e.touches.length === 1) {
-			let event = new MouseEvent("mousedown", {
-				bubbles: true,
-				cancelable: true,
-				view: window,
-				clientX: e.touches[0].pageX,
-				clientY: e.touches[0].pageY,
-			});
-			this.onMouseDown(event);
-		}
-
-		let event = new Event("touchstart");
-		let touches = [];
-		for (let t of e.touches) {
-			let touch = this.translatePoint(t.pageX, t.pageY);
-			touches.push(touch);
-		}
-		event.touches = touches;
-		this.emit("touchstart", event);
-		e.preventDefault();
-	}
-
-	/** @param {TouchEvent} e */
-	onTouchMove(e) {
-		if (e.touches.length === 1) {
-			let event = new MouseEvent("mousemove", {
-				bubbles: true,
-				cancelable: true,
-				view: window,
-				clientX: e.touches[0].pageX,
-				clientY: e.touches[0].pageY,
-			});
-			this.onMouseMove(event);
-		}
-
-		let event = new Event("touchmove");
-		let touches = [];
-		for (let t of e.touches) {
-			let touch = this.translatePoint(t.pageX, t.pageY);
-			touches.push(touch);
-		}
-		event.touches = touches;
-		this.emit("touchmove", event);
-		e.preventDefault();
-	}
-
-	/** @param {TouchEvent} e */
-	onTouchEnd(e) {
-		if (e.touches.length === 1) {
-			let event = new MouseEvent("mouseup", {
-				bubbles: true,
-				cancelable: true,
-				view: window,
-				clientX: e.touches[0].pageX,
-				clientY: e.touches[0].pageY,
-			});
-			this.onMouseUp(event);
-		}
-
-		let event = new Event("touchend");
-		let touches = [];
-		for (let t of e.touches) {
-			let touch = this.translatePoint(t.pageX, t.pageY);
-			touches.push(touch);
-		}
-		event.touches = touches;
-		this.emit("touchend", event);
-		e.preventDefault();
 	}
 
 	/** @param {WheelEvent} e */
@@ -226,8 +153,6 @@ export class EventDelegate extends EventEmitter2 {
 			event.wheelDeltaX = 0;
 		}
 		this.triggerMouseWheel(event);
-		e.preventDefault();
-
 		NotificationCenter.emit("render");
 	}
 
