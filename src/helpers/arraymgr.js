@@ -1,9 +1,11 @@
-export default class ArrayMgr {
-  constructor() {
-    this.items = [];
-  }
+export class ArrayMgr {
+	constructor() {
+		this.items = [];
+	}
 
-  add(item) {}
+	add(item) {}
 
-  rm(item) {}
+	rm(item) {}
+
+	move(item, index) {}
 }

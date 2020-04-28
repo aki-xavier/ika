@@ -1,4 +1,5 @@
 import { EventEmitter2 } from "eventemitter2";
+import { NotificationCenter } from "./helpers";
 
 /**
  * @typedef Point
@@ -20,6 +21,7 @@ export class Event {
 		this.wheelDeltaY = 0;
 		this.keyCode = 0;
 		this.keyName = 0;
+		/** @type {Point[]} */
 		this.touches = [];
 	}
 
@@ -54,6 +56,7 @@ export class EventDelegate extends EventEmitter2 {
 		this.el.onwheel = this.onMouseWheel.bind(this);
 
 		this.ctx = this.el.getContext("2d");
+		this.ctx.imageSmoothingEnabled = false;
 
 		this.resize(this.w, this.h);
 
@@ -100,25 +103,142 @@ export class EventDelegate extends EventEmitter2 {
 	onMouseDown(e) {
 		this.watchMouseDrag = true;
 		let p = this.translatePoint(e.clientX, e.clientY);
-		this.triggerMouseDown(p);
+		let event = new Event("mousedown", p.x, p.y);
+		this.triggerMouseDown(event);
 		e.preventDefault();
 	}
 
-	onMouseUp(e) {}
+	/** @param {MouseEvent} e */
+	onMouseUp(e) {
+		this.watchMouseDrag = false;
+		let p = this.translatePoint(e.clientX, e.clientY);
+		let event = new Event("mouseup", p.x, p.y);
+		this.triggerMouseUp(event);
+		e.preventDefault();
+	}
 
-	onMouseMove(e) {}
+	/** @param {MouseEvent} e */
+	onMouseOut(e) {
+		if (this.watchMouseDrag) {
+			this.onMouseUp(e);
+		}
+	}
 
-	onMouseOut(e) {}
+	/** @param {MouseEvent} e */
+	onMouseMove(e) {
+		if (this.watchMouseDrag) {
+			let p = this.translatePoint(e.clientX, e.clientY);
+			let event = new Event("mousemove", p.x, p.y);
+			this.triggerMouseMove(event);
+		}
+		e.preventDefault();
+	}
 
-	onTouchStart(e) {}
+	/** @param {TouchEvent} e */
+	onTouchStart(e) {
+		if (e.touches.length === 1) {
+			let event = new MouseEvent("mousedown", {
+				bubbles: true,
+				cancelable: true,
+				view: window,
+				clientX: e.touches[0].pageX,
+				clientY: e.touches[0].pageY,
+			});
+			this.onMouseDown(event);
+		}
 
-	onTouchMove(e) {}
+		let event = new Event("touchstart");
+		let touches = [];
+		for (let t of e.touches) {
+			let touch = this.translatePoint(t.pageX, t.pageY);
+			touches.push(touch);
+		}
+		event.touches = touches;
+		this.emit("touchstart", event);
+		e.preventDefault();
+	}
 
-	onTouchEnd(e) {}
+	/** @param {TouchEvent} e */
+	onTouchMove(e) {
+		if (e.touches.length === 1) {
+			let event = new MouseEvent("mousemove", {
+				bubbles: true,
+				cancelable: true,
+				view: window,
+				clientX: e.touches[0].pageX,
+				clientY: e.touches[0].pageY,
+			});
+			this.onMouseMove(event);
+		}
 
-	onMouseWheel(e) {}
+		let event = new Event("touchmove");
+		let touches = [];
+		for (let t of e.touches) {
+			let touch = this.translatePoint(t.pageX, t.pageY);
+			touches.push(touch);
+		}
+		event.touches = touches;
+		this.emit("touchmove", event);
+		e.preventDefault();
+	}
+
+	/** @param {TouchEvent} e */
+	onTouchEnd(e) {
+		if (e.touches.length === 1) {
+			let event = new MouseEvent("mouseup", {
+				bubbles: true,
+				cancelable: true,
+				view: window,
+				clientX: e.touches[0].pageX,
+				clientY: e.touches[0].pageY,
+			});
+			this.onMouseUp(event);
+		}
+
+		let event = new Event("touchend");
+		let touches = [];
+		for (let t of e.touches) {
+			let touch = this.translatePoint(t.pageX, t.pageY);
+			touches.push(touch);
+		}
+		event.touches = touches;
+		this.emit("touchend", event);
+		e.preventDefault();
+	}
+
+	/** @param {WheelEvent} e */
+	onMouseWheel(e) {
+		let p = this.translatePoint(e.clientY, e.clientY);
+		let event = new Event("mousewheel", p.x, p.y);
+		// @ts-ignore
+		if (e.wheelDeltaY) {
+			// @ts-ignore
+			event.wheelDeltaY = e.wheelDeltaY || 0;
+			// @ts-ignore
+			event.wheelDeltaX = e.wheelDeltaX || 0;
+			// @ts-ignore
+		} else if (e.wheelDelta) {
+			// @ts-ignore
+			event.wheelDeltaY = e.wheelDelta;
+			event.wheelDeltaX = 0;
+		} else {
+			event.wheelDeltaY = (-120 * e.detail) / 3;
+			event.wheelDeltaX = 0;
+		}
+		this.triggerMouseWheel(event);
+		e.preventDefault();
+
+		NotificationCenter.emit("render");
+	}
 
 	//============================
 
-	triggerMouseDown(point) {}
+	/** @param {Event} e */
+	triggerMouseDown(e) {}
+	/** @param {Event} e */
+	triggerMouseUp(e) {}
+	/** @param {Event} e */
+	triggerMouseMove(e) {}
+	/** @param {Event} e */
+	triggerMouseWheel(e) {}
 }
