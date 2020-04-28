@@ -1,5 +1,5 @@
 import { Event, EventDelegate } from "./event";
-import { ArrayMgr, NotificationCenter, searchItemInGroup } from "./helpers";
+import { NotificationCenter, searchItemInGroup } from "./helpers";
 import { Element } from "./element";
 
 export class Scene extends EventDelegate {
@@ -9,35 +9,40 @@ export class Scene extends EventDelegate {
 		/** @type {import("./event").Point} */
 		this.downPoint = null;
 		this.enableFinger = false;
-		this.children = new ArrayMgr();
+		/** @type {Element[]} */
+		this.children = [];
 		/** @type {Element} */
 		this.mouseTarget = null;
 		this.isDragging = false;
 	}
 
 	add(item) {
-		this.children.add(item);
+		this.children.push(item);
 	}
 
 	addToBottom(item) {
-		this.add(item);
-		this.children.move(item, 0);
+		this.children.unshift(item);
 	}
 
 	rm(item) {
-		this.children.rm(item);
+		let index = this.children.indexOf(item);
+		if (index === -1) {
+			return;
+		}
+		this.children.splice(index, 1);
 	}
 
 	moveToFront(item) {
-		this.children.move(item, this.children.items.length - 1);
+		this.rm(item);
+		this.add(item);
 	}
 
 	render() {
 		this.clear();
 		let rerender = false;
-		for (let i = 0; i < this.children.items.length; i++) {
+		for (let i = 0; i < this.children.length; i++) {
 			/** @type {Element} */
-			let item = this.children.items[i];
+			let item = this.children[i];
 			item.updateAnimation();
 			if (!item.visible) {
 				continue;
@@ -65,9 +70,9 @@ export class Scene extends EventDelegate {
 	 * @returns {Element}
 	 */
 	hitTest(x, y) {
-		for (let i = this.children.items.length - 1; i >= 0; i--) {
+		for (let i = this.children.length - 1; i >= 0; i--) {
 			/** @type {Element} */
-			let item = this.children.items[i];
+			let item = this.children[i];
 			if (!item.visible) {
 				continue;
 			}

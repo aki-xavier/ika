@@ -1,5 +1,5 @@
-export { ArrayMgr } from "./arraymgr";
 export { NotificationCenter } from "./notification";
+export { Animation } from "./animation";
 
 import { Element } from "../element";
 
@@ -62,7 +62,7 @@ export function searchItemInGroup(group, item) {
 		pos.y += group.offsetY;
 	}
 
-	for (let i of group.children.items) {
+	for (let i of group.children) {
 		if (i === item) {
 			found = true;
 			break;
@@ -76,7 +76,7 @@ export function searchItemInGroup(group, item) {
 		return pos;
 	}
 
-	for (let i of group.children.items) {
+	for (let i of group.children) {
 		if (i.children == null) {
 			continue;
 		}
