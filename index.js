@@ -1,17 +1,7 @@
-// var klasses = require("./src/klasses");
+import { Scene } from "./src";
 
-// for (var k in klasses) {
-//   module.exports[k] = klasses[k];
-// }
+let canvas = document.createElement("canvas");
 
-// // external frameworks
-// module.exports["ika-animations"] = require("ika-animations");
-// module.exports.Emitter = require("emitter");
+document.body.appendChild(canvas);
 
-// var Emitter = require("emitter");
-// window.NotificationReceiver = new Emitter();
-
-// module.exports.easySetup = require("./src/easy_setup").easySetup;
-// module.exports.bindScene = require("./src/easy_setup").bindScene;
-// module.exports.createElementsFromXML = require("./src/parse_xml").createElementsFromXML;
-// module.exports.PICTURES = require("./src/public_pictures");
+let scene = new Scene({ el: canvas });
